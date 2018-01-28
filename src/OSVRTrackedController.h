@@ -149,6 +149,7 @@ private:
     void registerTrigger(int id, std::string path);
     void registerTrackpad(int id, std::string path);
     void registerBattery(std::string path);
+	bool ignoreVelocityReports_;
 };
 
 #endif // INCLUDED_OSVRTrackedDevice_h_GUID_128E3B29_F5FC_4221_9B38_14E3F402E645

@@ -366,7 +366,7 @@ void OSVRTrackedHMD::HmdTrackerCallback(void* userdata, const OSVR_TimeValue* ti
     pose.result = vr::TrackingResult_Running_OK;
     pose.poseIsValid = true;
     pose.willDriftInYaw = true;
-    pose.shouldApplyHeadModel = true;
+    pose.shouldApplyHeadModel = false;
     pose.deviceIsConnected = true;
 
     // Time offset of this pose, in seconds from the actual time of the pose,

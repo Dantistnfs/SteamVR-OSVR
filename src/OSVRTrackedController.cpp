@@ -40,6 +40,8 @@
 #include <osvr/Util/EigenInterop.h>
 #include <osvr/Client/RenderManagerConfig.h>
 #include <util/FixedLengthStringFunctions.h>
+#include <osvr/ClientKit/InterfaceStateC.h>
+#include <osvr/Util/EigenQuatExponentialMap.h>
 
 // Standard includes
 #include <cstring>
@@ -224,15 +226,36 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
     // Position
     Eigen::Vector3d::Map(pose.vecPosition) = osvr::util::vecMap(report->pose.translation);
 
-    // Position velocity and acceleration are not currently consistently provided
-    Eigen::Vector3d::Map(pose.vecVelocity) = Eigen::Vector3d::Zero();
+	// Orientation
+	map(pose.qRotation) = osvr::util::fromQuat(report->pose.rotation);
+
+	// Linear and angular velocities
+	//if (true) {
+	if (!self->ignoreVelocityReports_) {
+		OSVR_TimeValue tv;
+		OSVR_VelocityState velocity_state;
+		const auto has_velocity_state = osvrGetVelocityState(self->trackerInterface_.get(), &tv, &velocity_state);
+		if (OSVR_RETURN_SUCCESS == has_velocity_state) {
+			if (velocity_state.linearVelocityValid) {
+				std::copy(std::begin(velocity_state.linearVelocity.data), std::end(velocity_state.linearVelocity.data), std::begin(pose.vecVelocity));
+			}
+
+			if (velocity_state.angularVelocityValid) {
+				// Change the reference frame
+				const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
+				const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(velocity_state.angularVelocity.incrementalRotation) * pose_rotation;
+
+				// Convert incremental rotation to angular velocity
+				const auto dt = velocity_state.angularVelocity.dt;
+				const auto angular_velocity = osvr::util::quat_ln(inc_rotation) * 2.0 / dt;
+
+				Eigen::Vector3d::Map(pose.vecAngularVelocity) = angular_velocity;
+			}
+		}
+	}
+	// Linear acceleration is not currently provided
     Eigen::Vector3d::Map(pose.vecAcceleration) = Eigen::Vector3d::Zero();
-
-    // Orientation
-    map(pose.qRotation) = osvr::util::fromQuat(report->pose.rotation);
-
-    // Angular velocity and acceleration are not currently consistently provided
-    Eigen::Vector3d::Map(pose.vecAngularVelocity) = Eigen::Vector3d::Zero();
+    // Angular acceleration is not currently consistently provided
     Eigen::Vector3d::Map(pose.vecAngularAcceleration) = Eigen::Vector3d::Zero();
 
     pose.result = vr::TrackingResult_Running_OK;
@@ -392,6 +415,7 @@ const char* OSVRTrackedController::GetId()
 
 void OSVRTrackedController::configure()
 {
+	ignoreVelocityReports_ = settings_->getSetting<bool>("ignoreVelocityReports", false);
     configureProperties();
 }
 
@@ -399,9 +423,8 @@ void OSVRTrackedController::configureProperties()
 {
 
     propertyContainer_ = vr::VRProperties()->TrackedDeviceToPropertyContainer(this->objectId_);
-    // Additional properties from nolo's osvr tracked device
-    vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_TrackingSystemName_String, "NoloVR");
-    vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_ManufacturerName_String, "LYRobotix");
+    vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_TrackingSystemName_String, "OSVR");
+    vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_ManufacturerName_String, "OSVR");
     vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_TrackingFirmwareVersion_String, "0.1.0");
     vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_HardwareRevision_String, "0.1.0");
     vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_AllWirelessDongleDescriptions_String, "");
