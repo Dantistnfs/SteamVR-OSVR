@@ -245,7 +245,8 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 		//if (j > 100) {
 		//	j = 0;
 		//	OSVR_LOG(info) << "Has vel state: " << (bool)has_velocity_state << "\n";
-		//	OSVR_LOG(info) << "xyz: " << velocity_state.linearVelocity.data[0] << ", " << velocity_state.linearVelocity.data[1] <<  ", " << velocity_state.linearVelocity.data[2] << "\n";
+		//	OSVR_LOG(info) << "Isvalid: " << (bool)velocity_state.linearVelocityValid << "\n";
+		//	OSVR_LOG(info) << "xyz: " << osvrVec3GetX(&velocity_state.linearVelocity) << ", " << osvrVec3GetY(&velocity_state.linearVelocity) << ", " << osvrVec3GetZ(&velocity_state.linearVelocity) << "\n";
 		//}
 		//++j;
 		if (OSVR_RETURN_SUCCESS == has_velocity_state) {
@@ -266,27 +267,27 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 				Eigen::Vector3d::Map(pose.vecAngularVelocity) = angular_velocity;
 			}
 		}
-		OSVR_AccelerationState accel_state;
-		const auto has_accel_state = osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
-		if (OSVR_RETURN_SUCCESS == has_accel_state) {
-			if (accel_state.linearAccelerationValid) {
-				std::copy(std::begin(accel_state.linearAcceleration.data), std::end(accel_state.linearAcceleration.data), std::begin(pose.vecAcceleration));
-			}
+	//	OSVR_AccelerationState accel_state;
+	//	const auto has_accel_state = osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
+	//	if (OSVR_RETURN_SUCCESS == has_accel_state) {
+	//		if (accel_state.linearAccelerationValid) {
+	//			std::copy(std::begin(accel_state.linearAcceleration.data), std::end(accel_state.linearAcceleration.data), std::begin(pose.vecAcceleration));
+	//		}
 
-			if (accel_state.angularAccelerationValid) {
-				// Change the reference frame
-				const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
-				const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(accel_state.angularAcceleration.incrementalRotation) * pose_rotation;
+	//		if (accel_state.angularAccelerationValid) {
+	//			// Change the reference frame
+	//			const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
+	//			const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(accel_state.angularAcceleration.incrementalRotation) * pose_rotation;
 
-				// Convert incremental rotation to angular velocity
-				const auto dt = accel_state.angularAcceleration.dt;
-				const auto angular_accel = osvr::util::quat_ln(inc_rotation) * 2.0 / dt;
+	//			// Convert incremental rotation to angular velocity
+	//			const auto dt = accel_state.angularAcceleration.dt;
+	//			const auto angular_accel = osvr::util::quat_ln(inc_rotation) * 2.0 / dt;
 
-				Eigen::Vector3d::Map(pose.vecAngularAcceleration) = angular_accel;
-			}
-		}
+	//			Eigen::Vector3d::Map(pose.vecAngularAcceleration) = angular_accel;
+	//		}
+	//	}
 	}
-	// Linear acceleration is not currently provided
+	// Linear acceleration is not currently consistently provided
     Eigen::Vector3d::Map(pose.vecAcceleration) = Eigen::Vector3d::Zero();
     // Angular acceleration is not currently consistently provided
     Eigen::Vector3d::Map(pose.vecAngularAcceleration) = Eigen::Vector3d::Zero();
