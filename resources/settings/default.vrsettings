@@ -19,6 +19,7 @@
         "modelNumber": "",
         "serialNumber": "",
         "cameraRenderModel": "{osvr}osvr_camera",
+        "controllerRenderModel": "{osvr}nolo_controller",
         "verticalRefreshRate": 0.0,
         "ignoreVelocityReports": false
     }

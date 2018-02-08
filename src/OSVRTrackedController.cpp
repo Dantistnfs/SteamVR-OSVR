@@ -483,7 +483,7 @@ void OSVRTrackedController::configureProperties()
     vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_SerialNumber_String,     name_.c_str());
     // set the vive controller at the default.
 	//vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_RenderModelName_String, "vr_controller_vive_1_5");
-	vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_RenderModelName_String, "nolo_controller");
+	vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_RenderModelName_String, settings_->getSetting<std::string>("controllerRenderModel", "").c_str());
 	//vr::VRProperties()->SetStringProperty(propertyContainer_, vr::Prop_RenderModelName_String, settings_->getSetting<std::string>("cameraRenderModel", "").c_str());
 }
 
