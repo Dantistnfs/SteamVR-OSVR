@@ -22,7 +22,9 @@
         "controllerRenderModel": "{osvr}nolo_controller",
         "verticalRefreshRate": 0.0,
         "ignoreVelocityReports": false,
-        "ignoreAccelerationReports": true
+        "ignoreAngularVelocityReports": true,
+        "ignoreAccelerationReports": true,
+        "ignoreAngularAccelerationReports": true
     }
 }
 

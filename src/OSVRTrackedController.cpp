@@ -239,7 +239,7 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 			Eigen::Vector3d::Map(pose.vecVelocity) = osvr::util::vecMap(velocity_state.linearVelocity);
 		}
 
-		if (velocity_state.angularVelocityValid) {
+		if (velocity_state.angularVelocityValid && !self->ignoreAngularVelocityReports_) {
 			// Change the reference frame
 			//const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
 			//const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(velocity_state.angularVelocity.incrementalRotation) * pose_rotation;
@@ -261,7 +261,7 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 				std::copy(std::begin(accel_state.linearAcceleration.data), std::end(accel_state.linearAcceleration.data), std::begin(pose.vecAcceleration));
 			}
 
-			if (accel_state.angularAccelerationValid) {
+			if (accel_state.angularAccelerationValid && !self->ignoreAngularAccelerationReports_) {
 				// Change the reference frame
 				//const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
 				//const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(accel_state.angularAcceleration.incrementalRotation) * pose_rotation;
@@ -435,7 +435,9 @@ const char* OSVRTrackedController::GetId()
 void OSVRTrackedController::configure()
 {
 	ignoreVelocityReports_ = settings_->getSetting<bool>("ignoreVelocityReports", false);
+	ignoreAngularVelocityReports_ = settings_->getSetting<bool>("ignoreAngularVelocityReports", false);
 	ignoreAccelerationReports_ = settings_->getSetting<bool>("ignoreAccelerationReports", false);
+	ignoreAngularAccelerationReports_ = settings_->getSetting<bool>("ignoreAngularAccelerationReports", false);
 	configureProperties();
 }
 
