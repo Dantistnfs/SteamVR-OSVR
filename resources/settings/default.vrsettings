@@ -24,7 +24,8 @@
         "ignoreVelocityReports": false,
         "ignoreAngularVelocityReports": false,
         "ignoreAccelerationReports": true,
-        "ignoreAngularAccelerationReports": true
+        "ignoreAngularAccelerationReports": true, 
+	   "linearVelocityMultiplier": 1.0
     }
 }
 

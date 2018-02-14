@@ -233,12 +233,31 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 		OSVR_TimeValue tv;
 		OSVR_VelocityState velocity_state;
 		osvrGetVelocityState(self->trackerInterface_.get(), &tv, &velocity_state);
-
 		if (velocity_state.linearVelocityValid) {
-			Eigen::Vector3d::Map(pose.vecVelocity) = osvr::util::vecMap(velocity_state.linearVelocity);
+			static bool first_v = true;
+			if (first_v){
+				OSVR_LOG(info) << "OSVRTrackedController - velocity data visible";
+				first_v = false;
+			}
+			Eigen::Vector3d::Map(pose.vecVelocity) = self->linearVelocityMultiplier_*osvr::util::vecMap(velocity_state.linearVelocity);
+		}
+
+		static bool first_avck = true;
+		static int count = 0; 
+		if (first_avck){
+			OSVR_LOG(info) << "OSVRTrackedController - ignoreAngularVelocityReports_ = " << self->ignoreAngularVelocityReports_;
+			OSVR_LOG(info) << "OSVRTrackedController - velocity_state.angularVelocityValid = " << velocity_state.angularVelocityValid;
+			count++;
+			if(count>10) first_avck = false;
 		}
 
 		if (velocity_state.angularVelocityValid && !self->ignoreAngularVelocityReports_) {
+
+			static bool first_av = true;
+			if (first_av){
+				OSVR_LOG(info) << "OSVRTrackedController - angular velocity data visible";
+				first_av = false;
+			}
 
 			// Convert the quaternion back to axis-angle 
 			double w = osvrQuatGetW(&velocity_state.angularVelocity.incrementalRotation);
@@ -265,10 +284,21 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 			OSVR_AccelerationState accel_state;
 			osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
 			if (accel_state.linearAccelerationValid) {
+				static bool first_a = true;
+				if (first_a){
+					OSVR_LOG(info) << "OSVRTrackedController - acceleration data visible";
+					first_a = false;
+				}
 				Eigen::Vector3d::Map(pose.vecVelocity) = osvr::util::vecMap(accel_state.linearAcceleration);
 			}
 
 			if (accel_state.angularAccelerationValid && !self->ignoreAngularAccelerationReports_) {
+
+				static bool first_aa = true;
+				if (first_aa){
+					OSVR_LOG(info) << "OSVRTrackedController - angular acceleration data visible";
+					first_aa = false;
+				}
 
 				// Convert the quaternion back to axis-angle 
 				double w = osvrQuatGetW(&accel_state.angularAcceleration.incrementalRotation);
@@ -454,6 +484,9 @@ void OSVRTrackedController::configure()
 	ignoreAngularVelocityReports_ = settings_->getSetting<bool>("ignoreAngularVelocityReports", false);
 	ignoreAccelerationReports_ = settings_->getSetting<bool>("ignoreAccelerationReports", false);
 	ignoreAngularAccelerationReports_ = settings_->getSetting<bool>("ignoreAngularAccelerationReports", false);
+
+	linearVelocityMultiplier_ = settings_->getSetting<float>("linearVelocityMultiplier", 1.0);
+
 	configureProperties();
 }
 
