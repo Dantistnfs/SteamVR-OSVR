@@ -229,68 +229,53 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 	// Orientation
 	map(pose.qRotation) = osvr::util::fromQuat(report->pose.rotation);
 
-	// Linear and angular velocities
-	//if (true) {
-	//static int i = 0;
-	//if (i > 100) {
-	//	i = 0;
-	//	OSVR_LOG(info) << "IgnoreReports: " << self->ignoreVelocityReports_ << "\n";
-	//}
-	//++i;
 	if (!self->ignoreVelocityReports_) {
 		OSVR_TimeValue tv;
 		OSVR_VelocityState velocity_state;
-		const auto has_velocity_state = osvrGetVelocityState(self->trackerInterface_.get(), &tv, &velocity_state);
-		//static int j = 0;
-		//if (j > 100) {
-		//	j = 0;
-		//	OSVR_LOG(info) << "Has vel state: " << (bool)has_velocity_state << "\n";
-		//	OSVR_LOG(info) << "Isvalid: " << (bool)velocity_state.linearVelocityValid << "\n";
-		//	OSVR_LOG(info) << "xyz: " << osvrVec3GetX(&velocity_state.linearVelocity) << ", " << osvrVec3GetY(&velocity_state.linearVelocity) << ", " << osvrVec3GetZ(&velocity_state.linearVelocity) << "\n";
-		//}
-		//++j;
-		if (OSVR_RETURN_SUCCESS == has_velocity_state) {
-			if (velocity_state.linearVelocityValid) {
-				//std::copy(std::begin(velocity_state.linearVelocity.data), std::end(velocity_state.linearVelocity.data), std::begin(pose.vecVelocity));
-				Eigen::Vector3d::Map(pose.vecVelocity) = osvr::util::vecMap(velocity_state.linearVelocity);
+		osvrGetVelocityState(self->trackerInterface_.get(), &tv, &velocity_state);
+
+		if (velocity_state.linearVelocityValid) {
+			//std::copy(std::begin(velocity_state.linearVelocity.data), std::end(velocity_state.linearVelocity.data), std::begin(pose.vecVelocity));
+			Eigen::Vector3d::Map(pose.vecVelocity) = osvr::util::vecMap(velocity_state.linearVelocity);
+		}
+
+		if (velocity_state.angularVelocityValid) {
+			// Change the reference frame
+			//const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
+			//const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(velocity_state.angularVelocity.incrementalRotation) * pose_rotation;
+			const auto inc_rotation = osvr::util::fromQuat(velocity_state.angularVelocity.incrementalRotation); 
+
+			// Convert incremental rotation to angular velocity
+			const auto dt = velocity_state.angularVelocity.dt;
+			const auto angular_velocity = osvr::util::quat_ln(inc_rotation) / dt;
+
+			Eigen::Vector3d::Map(pose.vecAngularVelocity) = angular_velocity;
+
+		}
+
+		if (!self->ignoreAccelerationReports_) {
+
+			OSVR_AccelerationState accel_state;
+			osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
+			if (accel_state.linearAccelerationValid) {
+				std::copy(std::begin(accel_state.linearAcceleration.data), std::end(accel_state.linearAcceleration.data), std::begin(pose.vecAcceleration));
 			}
 
-			if (velocity_state.angularVelocityValid) {
+			if (accel_state.angularAccelerationValid) {
 				// Change the reference frame
-				const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
-				const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(velocity_state.angularVelocity.incrementalRotation) * pose_rotation;
+				//const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
+				//const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(accel_state.angularAcceleration.incrementalRotation) * pose_rotation;
+				const auto inc_rotation = osvr::util::fromQuat(accel_state.angularAcceleration.incrementalRotation);
 
 				// Convert incremental rotation to angular velocity
-				const auto dt = velocity_state.angularVelocity.dt;
-				const auto angular_velocity = osvr::util::quat_ln(inc_rotation) * 2.0 / dt;
+				const auto dt = accel_state.angularAcceleration.dt;
+				const auto angular_accel = osvr::util::quat_ln(inc_rotation) / dt;
 
-				Eigen::Vector3d::Map(pose.vecAngularVelocity) = angular_velocity;
+				Eigen::Vector3d::Map(pose.vecAngularAcceleration) = angular_accel;
 			}
 		}
-	//	OSVR_AccelerationState accel_state;
-	//	const auto has_accel_state = osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
-	//	if (OSVR_RETURN_SUCCESS == has_accel_state) {
-	//		if (accel_state.linearAccelerationValid) {
-	//			std::copy(std::begin(accel_state.linearAcceleration.data), std::end(accel_state.linearAcceleration.data), std::begin(pose.vecAcceleration));
-	//		}
 
-	//		if (accel_state.angularAccelerationValid) {
-	//			// Change the reference frame
-	//			const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
-	//			const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(accel_state.angularAcceleration.incrementalRotation) * pose_rotation;
-
-	//			// Convert incremental rotation to angular velocity
-	//			const auto dt = accel_state.angularAcceleration.dt;
-	//			const auto angular_accel = osvr::util::quat_ln(inc_rotation) * 2.0 / dt;
-
-	//			Eigen::Vector3d::Map(pose.vecAngularAcceleration) = angular_accel;
-	//		}
-	//	}
 	}
-	// Linear acceleration is not currently consistently provided
-    Eigen::Vector3d::Map(pose.vecAcceleration) = Eigen::Vector3d::Zero();
-    // Angular acceleration is not currently consistently provided
-    Eigen::Vector3d::Map(pose.vecAngularAcceleration) = Eigen::Vector3d::Zero();
 
     pose.result = vr::TrackingResult_Running_OK;
     pose.poseIsValid = true;
@@ -450,7 +435,8 @@ const char* OSVRTrackedController::GetId()
 void OSVRTrackedController::configure()
 {
 	ignoreVelocityReports_ = settings_->getSetting<bool>("ignoreVelocityReports", false);
-    configureProperties();
+	ignoreAccelerationReports_ = settings_->getSetting<bool>("ignoreAccelerationReports", false);
+	configureProperties();
 }
 
 void OSVRTrackedController::configureProperties()
