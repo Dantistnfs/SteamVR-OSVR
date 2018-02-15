@@ -413,7 +413,7 @@ vr::ETrackedDeviceClass OSVRTrackedHMD::getDeviceClass() const
 void OSVRTrackedHMD::configure()
 {
     // Get settings from config file
-    ignoreVelocityReports_ = settings_->getSetting<bool>("ignoreVelocityReports", false);
+    ignoreVelocityReports_ = settings_->getSetting<bool>("HMD_ignoreVelocityReports", false);
     OSVR_LOG(info) << (ignoreVelocityReports_ ? "Ignoring velocity reports." : "Utilizing velocity reports.");
 
     // The name of the display we want to use

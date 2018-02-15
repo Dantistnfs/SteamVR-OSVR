@@ -21,8 +21,9 @@
         "cameraRenderModel": "{osvr}osvr_camera",
         "controllerRenderModel": "{osvr}nolo_controller",
         "verticalRefreshRate": 0.0,
+        "HMD_ignoreVelocityReports": true,
         "ignoreVelocityReports": false,
-        "ignoreAngularVelocityReports": false,
+        "ignoreAngularVelocityReports": true,
         "ignoreAccelerationReports": true,
         "ignoreAngularAccelerationReports": true, 
 	   "linearVelocityMultiplier": 1.0
