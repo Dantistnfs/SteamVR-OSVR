@@ -86,43 +86,47 @@ vr::EVRInitError OSVRTrackedController::Activate(uint32_t object_id)
     }
 
     // Register callbacks
-    std::string trackerPath;
-    std::string buttonPath;
-    std::string triggerPath;
-    std::string joystickPath;
-    std::string trackpadPath;
-    std::string batteryPath;
-    if (controllerIndex_ == 0) {
-        trackerPath  = "/me/hands/left";
-        buttonPath   = "/controller/left/";
-        triggerPath  = "/controller/left/trigger";
-        joystickPath = "/controller/left/joystick";
-        trackpadPath = "/controller/left/trackpad";
-	batteryPath  = "/controller/left/battery";
-    } else if (controllerIndex_ == 1) {
-        trackerPath  = "/me/hands/right";
-        buttonPath   = "/controller/right/";
-        triggerPath  = "/controller/right/trigger";
-        joystickPath = "/controller/right/joystick";
-        trackpadPath = "/controller/right/trackpad";
-	batteryPath  = "/controller/right/battery";
-    } else {
-        buttonPath = "/controller" + std::to_string(controllerIndex_) + "/";
-        triggerPath = "/controller" + std::to_string(controllerIndex_) + "/trigger";
-        joystickPath = "/controller" + std::to_string(controllerIndex_) + "/joystick";
-    }
-
-    if (!trackerPath.empty()) {
-        trackerInterface_ = context_.getInterface(trackerPath);
-	if(trackerInterface_.notEmpty()){
-            OSVR_LOG(trace) << "OSVRTrackedController::Activate() tracker Interface is empty "<<trackerPath;
-            trackerInterface_.registerCallback(&OSVRTrackedController::controllerTrackerCallback, this);
-	}else{
-	    trackerInterface_.free();
+	std::string trackerPath;
+	std::string buttonPath;
+	std::string triggerPath;
+	std::string joystickPath;
+	std::string trackpadPath;
+	std::string batteryPath;
+	if (controllerIndex_ == 0) {
+		trackerPath = "/me/hands/left";
+		buttonPath = "/controller/left/";
+		triggerPath = "/controller/left/trigger";
+		joystickPath = "/controller/left/joystick";
+		trackpadPath = "/controller/left/trackpad";
+		batteryPath = "/controller/left/battery";
 	}
-    }else{
-	OSVR_LOG(trace) << "OSVRTrackedController::Activate() tracker path is empty "<<trackerPath;
-    }
+	else if (controllerIndex_ == 1) {
+		trackerPath = "/me/hands/right";
+		buttonPath = "/controller/right/";
+		triggerPath = "/controller/right/trigger";
+		joystickPath = "/controller/right/joystick";
+		trackpadPath = "/controller/right/trackpad";
+		batteryPath = "/controller/right/battery";
+	}
+	else {
+		buttonPath = "/controller" + std::to_string(controllerIndex_) + "/";
+		triggerPath = "/controller" + std::to_string(controllerIndex_) + "/trigger";
+		joystickPath = "/controller" + std::to_string(controllerIndex_) + "/joystick";
+	}
+
+	if (!trackerPath.empty()) {
+		trackerInterface_ = context_.getInterface(trackerPath);
+		if (trackerInterface_.notEmpty()){
+			OSVR_LOG(trace) << "OSVRTrackedController::Activate() tracker Interface is empty " << trackerPath;
+			trackerInterface_.registerCallback(&OSVRTrackedController::controllerTrackerCallback, this);
+		}
+		else{
+			trackerInterface_.free();
+		}
+	}
+	else{
+		OSVR_LOG(trace) << "OSVRTrackedController::Activate() tracker path is empty " << trackerPath;
+	}
 
 
     // BUTTONS
@@ -207,24 +211,24 @@ inline vr::HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, doub
 
 void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR_TimeValue* timestamp, const OSVR_PoseReport* report)
 {
-    if (!userdata)
-        return;
+	if (!userdata)
+		return;
 
-    auto* self = static_cast<OSVRTrackedController*>(userdata);
+	auto* self = static_cast<OSVRTrackedController*>(userdata);
 
-    vr::DriverPose_t pose = { 0 };
-    pose.poseTimeOffset = 0; // close enough
+	vr::DriverPose_t pose = { 0 };
+	pose.poseTimeOffset = 0; // close enough
 
-    Eigen::Vector3d::Map(pose.vecWorldFromDriverTranslation) = Eigen::Vector3d::Zero();
-    Eigen::Vector3d::Map(pose.vecDriverFromHeadTranslation) = Eigen::Vector3d::Zero();
+	Eigen::Vector3d::Map(pose.vecWorldFromDriverTranslation) = Eigen::Vector3d::Zero();
+	Eigen::Vector3d::Map(pose.vecDriverFromHeadTranslation) = Eigen::Vector3d::Zero();
 
-    map(pose.qWorldFromDriverRotation) = Eigen::Quaterniond::Identity();
-    map(pose.qDriverFromHeadRotation) = Eigen::Quaterniond::Identity();
-    //pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    //pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+	map(pose.qWorldFromDriverRotation) = Eigen::Quaterniond::Identity();
+	map(pose.qDriverFromHeadRotation) = Eigen::Quaterniond::Identity();
+	//pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+	//pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
 
-    // Position
-    Eigen::Vector3d::Map(pose.vecPosition) = osvr::util::vecMap(report->pose.translation);
+	// Position
+	Eigen::Vector3d::Map(pose.vecPosition) = osvr::util::vecMap(report->pose.translation);
 
 	// Orientation
 	map(pose.qRotation) = osvr::util::fromQuat(report->pose.rotation);
@@ -232,71 +236,66 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 	if (!self->ignoreVelocityReports_) {
 		OSVR_TimeValue tv;
 		OSVR_VelocityState velocity_state;
-		osvrGetVelocityState(self->trackerInterface_.get(), &tv, &velocity_state);
-		if (velocity_state.linearVelocityValid) {
-			static bool first_v = true;
-			if (first_v){
-				OSVR_LOG(info) << "OSVRTrackedController - velocity data visible";
-				first_v = false;
-			}
-			Eigen::Vector3d::Map(pose.vecVelocity) = self->linearVelocityMultiplier_*osvr::util::vecMap(velocity_state.linearVelocity);
-		}
-
-		static bool first_avck = true;
-		static int count = 0; 
-		if (first_avck){
-			OSVR_LOG(info) << "OSVRTrackedController - ignoreAngularVelocityReports_ = " << self->ignoreAngularVelocityReports_;
-			OSVR_LOG(info) << "OSVRTrackedController - velocity_state.angularVelocityValid = " << velocity_state.angularVelocityValid;
-			count++;
-			if(count>10) first_avck = false;
-		}
-
-		if (velocity_state.angularVelocityValid && !self->ignoreAngularVelocityReports_) {
-
-			static bool first_av = true;
-			if (first_av){
-				OSVR_LOG(info) << "OSVRTrackedController - angular velocity data visible";
-				first_av = false;
+		OSVR_ReturnCode velOK = osvrGetVelocityState(self->trackerInterface_.get(), &tv, &velocity_state);
+		if (velOK == OSVR_RETURN_SUCCESS){
+			if (velocity_state.linearVelocityValid) {
+				static bool first_v = true;
+				if (first_v){
+					OSVR_LOG(info) << "OSVRTrackedController - VELOCITY data visible and valid";
+					first_v = false;
+				}
+				Eigen::Vector3d::Map(pose.vecVelocity) = self->linearVelocityMultiplier_*osvr::util::vecMap(velocity_state.linearVelocity);
 			}
 
-			// Convert the quaternion back to axis-angle 
-			double w = osvrQuatGetW(&velocity_state.angularVelocity.incrementalRotation);
-			double angle = 2.0*acos(w); 
-			double i = osvrQuatGetX(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
-			double j = osvrQuatGetY(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
-			double k = osvrQuatGetZ(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
-			
-			double norm = sqrt(i*i + j*j + k*k); 
-			if (norm != 0.0){
-				i /= norm; 
-				j /= norm; 
-				k /= norm;
+			if (velocity_state.angularVelocityValid && !self->ignoreAngularVelocityReports_) {
+
+				static bool first_av = true;
+				if (first_av){
+					OSVR_LOG(info) << "OSVRTrackedController - ANGULAR VELOCITY data visible and valid";
+					first_av = false;
+				}
+
+				// Convert the quaternion back to axis-angle 
+				double w = osvrQuatGetW(&velocity_state.angularVelocity.incrementalRotation);
+				double angle = 2.0*acos(w);
+				double i = osvrQuatGetX(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
+				double j = osvrQuatGetY(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
+				double k = osvrQuatGetZ(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
+
+				double norm = sqrt(i*i + j*j + k*k);
+				if (norm != 0.0){
+					i /= norm;
+					j /= norm;
+					k /= norm;
+				}
+
+				pose.vecAngularVelocity[0] = angle*i;
+				pose.vecAngularVelocity[1] = angle*j;
+				pose.vecAngularVelocity[2] = angle*k;
+
 			}
-
-			pose.vecAngularVelocity[0] = angle*i;
-			pose.vecAngularVelocity[1] = angle*j;
-			pose.vecAngularVelocity[2] = angle*k;
-
 		}
+	}
 
-		if (!self->ignoreAccelerationReports_) {
-
-			OSVR_AccelerationState accel_state;
-			osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
+	if (!self->ignoreAccelerationReports_) {
+		OSVR_TimeValue tv;
+		OSVR_AccelerationState accel_state;
+		OSVR_ReturnCode accOK = osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
+		if (accOK){
 			if (accel_state.linearAccelerationValid) {
 				static bool first_a = true;
 				if (first_a){
-					OSVR_LOG(info) << "OSVRTrackedController - acceleration data visible";
+					OSVR_LOG(info) << "OSVRTrackedController - ACCELERATION data visible and OK";
 					first_a = false;
 				}
-				Eigen::Vector3d::Map(pose.vecVelocity) = osvr::util::vecMap(accel_state.linearAcceleration);
+				Eigen::Vector3d::Map(pose.vecAcceleration) = osvr::util::vecMap(accel_state.linearAcceleration);
 			}
 
 			if (accel_state.angularAccelerationValid && !self->ignoreAngularAccelerationReports_) {
 
 				static bool first_aa = true;
 				if (first_aa){
-					OSVR_LOG(info) << "OSVRTrackedController - angular acceleration data visible";
+					OSVR_LOG(info) << "OSVRTrackedController - ANGULAR ACCELERATION data visible and OK";
 					first_aa = false;
 				}
 
@@ -320,7 +319,6 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 
 			}
 		}
-
 	}
 
     pose.result = vr::TrackingResult_Running_OK;
@@ -486,6 +484,12 @@ void OSVRTrackedController::configure()
 	ignoreAngularAccelerationReports_ = settings_->getSetting<bool>("ignoreAngularAccelerationReports", false);
 
 	linearVelocityMultiplier_ = settings_->getSetting<float>("linearVelocityMultiplier", 1.0);
+
+	OSVR_LOG(info) << "OSVRTrackedController - ignoreVelocityReports_ = " << ignoreVelocityReports_;
+	OSVR_LOG(info) << "OSVRTrackedController - ignoreAngularVelocityReports_ = " << ignoreAngularVelocityReports_;
+	OSVR_LOG(info) << "OSVRTrackedController - ignoreAcceleratonReports_ = " << ignoreAccelerationReports_;
+	OSVR_LOG(info) << "OSVRTrackedController - ignoreAngularAccelerationReports_ = " << ignoreAngularAccelerationReports_;
+	OSVR_LOG(info) << "OSVRTrackedController - linearVelocityMultiplier_ = " << linearVelocityMultiplier_;
 
 	configureProperties();
 }
