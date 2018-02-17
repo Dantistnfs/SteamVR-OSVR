@@ -85,6 +85,9 @@ vr::EVRInitError OSVRTrackedController::Activate(uint32_t object_id)
 		}
 	}
 
+	// added in for testing and tuning
+	configure();
+
 	// Register callbacks
 	std::string trackerPath;
 	std::string buttonPath;
@@ -128,7 +131,6 @@ vr::EVRInitError OSVRTrackedController::Activate(uint32_t object_id)
 		OSVR_LOG(trace) << "OSVRTrackedController::Activate() tracker path is empty " << trackerPath;
 	}
 
-
 	// BUTTONS
 	int button_id = 0;
 	registerButton(button_id++, buttonPath + "system", vr::k_EButton_System);
@@ -147,9 +149,6 @@ vr::EVRInitError OSVRTrackedController::Activate(uint32_t object_id)
 
 	// BATTERY
 	registerBattery(batteryPath);
-
-	// added in for testing not sure if its correct or not.
-	configure();
 
 	return vr::VRInitError_None;
 }
@@ -278,6 +277,18 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 	OSVR_AccelerationState accel_state;
 	OSVR_ReturnCode accOK = osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
 	if (accOK){
+
+		static bool first_ac = true;
+		if (first_ac){
+			OSVR_LOG(info) << "OSVRTrackedController - accOK TRUE";
+			if (accel_state.linearAccelerationValid)
+				OSVR_LOG(info) << "OSVRTrackedController - accOK TRUE linearAccelerationValid = TRUE";
+			else 
+				OSVR_LOG(info) << "OSVRTrackedController - accOK TRUE linearAccelerationValid = FALSE";
+
+			first_ac = false;
+		}
+
 		if (accel_state.linearAccelerationValid && !self->ignoreAccelerationReports_) {
 			static bool first_a = true;
 			if (first_a){
