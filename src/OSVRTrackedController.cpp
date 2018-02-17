@@ -253,23 +253,15 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 				first_av = false;
 			}
 
-			// Convert the quaternion back to axis-angle 
-			double w = osvrQuatGetW(&velocity_state.angularVelocity.incrementalRotation);
-			double angle = 2.0*acos(w);
-			double i = osvrQuatGetX(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
-			double j = osvrQuatGetY(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
-			double k = osvrQuatGetZ(&velocity_state.angularVelocity.incrementalRotation) / sqrt(1.0 - w*w);
+			// Change the reference frame
+			const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
+			const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(velocity_state.angularVelocity.incrementalRotation) * pose_rotation;
 
-			double norm = sqrt(i*i + j*j + k*k);
-			if (norm != 0.0){
-				i /= norm;
-				j /= norm;
-				k /= norm;
-			}
+			// Convert incremental rotation to angular velocity
+			const auto dt = velocity_state.angularVelocity.dt;
+			const auto angular_velocity = osvr::util::quat_ln(inc_rotation) * 2.0 / dt;
 
-			pose.vecAngularVelocity[0] = angle*i;
-			pose.vecAngularVelocity[1] = angle*j;
-			pose.vecAngularVelocity[2] = angle*k;
+			Eigen::Vector3d::Map(pose.vecAngularVelocity) = angular_velocity;
 
 		}
 	}
@@ -294,23 +286,16 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 				first_aa = false;
 			}
 
-			// Convert the quaternion back to axis-angle 
-			double w = osvrQuatGetW(&accel_state.angularAcceleration.incrementalRotation);
-			double angle = 2.0*acos(w);
-			double i = osvrQuatGetX(&accel_state.angularAcceleration.incrementalRotation) / sqrt(1.0 - w*w);
-			double j = osvrQuatGetY(&accel_state.angularAcceleration.incrementalRotation) / sqrt(1.0 - w*w);
-			double k = osvrQuatGetZ(&accel_state.angularAcceleration.incrementalRotation) / sqrt(1.0 - w*w);
+			// Change the reference frame
+			const auto pose_rotation = osvr::util::fromQuat(report->pose.rotation);
+			const auto inc_rotation = pose_rotation.inverse() * osvr::util::fromQuat(accel_state.angularAcceleration.incrementalRotation) * pose_rotation;
 
-			double norm = sqrt(i*i + j*j + k*k);
-			if (norm != 0.0){
-				i /= norm;
-				j /= norm;
-				k /= norm;
-			}
+			// Convert incremental rotation to angular velocity
+			const auto dt = accel_state.angularAcceleration.dt;
+			const auto angular_acceleration = osvr::util::quat_ln(inc_rotation) * 2.0 / dt;
 
-			pose.vecAngularAcceleration[0] = angle*i;
-			pose.vecAngularAcceleration[1] = angle*j;
-			pose.vecAngularAcceleration[2] = angle*k;
+			Eigen::Vector3d::Map(pose.vecAngularVelocity) = angular_acceleration;
+
 
 		}
 	}
