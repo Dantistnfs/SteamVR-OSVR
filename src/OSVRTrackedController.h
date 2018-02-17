@@ -153,7 +153,8 @@ private:
 	bool ignoreAngularVelocityReports_;
 	bool ignoreAccelerationReports_;
 	bool ignoreAngularAccelerationReports_;
-	float linearVelocityMultiplier_; 
+	float linearVelocityMultiplier_;
+	float linearAccelerationMultiplier_;
 };
 
 #endif // INCLUDED_OSVRTrackedDevice_h_GUID_128E3B29_F5FC_4221_9B38_14E3F402E645
