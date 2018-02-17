@@ -276,7 +276,7 @@ void OSVRTrackedController::controllerTrackerCallback(void* userdata, const OSVR
 
 	OSVR_AccelerationState accel_state;
 	OSVR_ReturnCode accOK = osvrGetAccelerationState(self->trackerInterface_.get(), &tv, &accel_state);
-	if (accOK){
+	if (accOK == OSVR_RETURN_SUCCESS){
 		if (accel_state.linearAccelerationValid && !self->ignoreAccelerationReports_) {
 			static bool first_a = true;
 			if (first_a){
